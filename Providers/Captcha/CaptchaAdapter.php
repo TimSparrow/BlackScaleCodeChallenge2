@@ -9,7 +9,6 @@ use TwoCaptcha\TwoCaptcha;
  */
 class CaptchaAdapter implements CaptchaSolverInterface
 {
-    private const API_KEY = '9e4174e887f7baa18e78a1d2f3de48c4';
 
     /**
      * An adapter method for 2Captcha service
@@ -23,7 +22,7 @@ class CaptchaAdapter implements CaptchaSolverInterface
      */
     public function solve(string $sitekey, string $url): string
     {
-        $solver = new TwoCaptcha(self::API_KEY);
+        $solver = new TwoCaptcha(getenv('2CAPTCHA_API_KEY'));
         $result =  $solver->recaptcha([
             'sitekey' => $sitekey,
             'url' => $url,
