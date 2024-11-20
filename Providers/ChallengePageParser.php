@@ -76,4 +76,16 @@ class ChallengePageParser
     {
         return $this->dom->find('form>input[name=ts]')->text();
     }
+
+    /**
+     * Returns the final token
+     *
+     * @return string
+     * @throws \PHPHtmlParser\Exceptions\ChildNotFoundException
+     * @throws \PHPHtmlParser\Exceptions\NotLoadedException
+     */
+    public function getToken(): string
+    {
+        return $this->dom->find('textarea#solution')->text();
+    }
 }
