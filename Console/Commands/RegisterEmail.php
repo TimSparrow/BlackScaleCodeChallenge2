@@ -65,12 +65,15 @@ class RegisterEmail extends Command
     private string $emailVerifyPageUri;
     private string $finalChallengePageUri;
 
-
+    public function getName(): string
+    {
+        return "blackscale_nedia_challenge";
+    }
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         try {
             $captchaResponse = $this->submitRegistrationGetCaptchaChallenge($this->botName, $this->getEmail());
@@ -83,8 +86,11 @@ class RegisterEmail extends Command
             $mathChallengeResult = $this->solveMathChallenge($mathChallenge);
             // return email and token
             $token = $this->getTokenFromResponse($mathChallengeResult);
+
+            return self::SUCCESS;
         } catch (\Throwable $exception) {
             $this->error($exception->getMessage());
+            return self::FAILURE;
         }
     }
 
@@ -193,6 +199,6 @@ class RegisterEmail extends Command
     private function getTokenFromResponse(string $response): string
     {
         $parser = new ChallengePageParser($response, $this->dom);
-        return $paeser->getToken();
+        return $parser->getToken();
     }
 }
