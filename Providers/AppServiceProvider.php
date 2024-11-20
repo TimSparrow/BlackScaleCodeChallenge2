@@ -16,9 +16,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
-        App::bind(RandomEmailInterface::class, MailSlurpRandomEmail::class);
-        App::bind(CaptchaSolverInterface::class, CaptchaAdapter::class);
+        // bind interfaces to implementations
+        $this->app->bind(RandomEmailInterface::class, MailSlurpRandomEmail::class);
+        $this->app->bind(CaptchaSolverInterface::class, CaptchaAdapter::class);
     }
 
     /**
