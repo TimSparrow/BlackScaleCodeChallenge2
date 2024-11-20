@@ -87,6 +87,8 @@ class RegisterEmail extends Command
             // return email and token
             $token = $this->getTokenFromResponse($mathChallengeResult);
 
+            echo $token;
+
             return self::SUCCESS;
         } catch (\Throwable $exception) {
             $this->error($exception->getMessage());
@@ -196,6 +198,16 @@ class RegisterEmail extends Command
         return $response->getBody()->getContents();
     }
 
+    /**
+     * Parse final challenge page and get the response
+     *
+     * @param string $response
+     * @return string
+     * @throws \PHPHtmlParser\Exceptions\ChildNotFoundException
+     * @throws \PHPHtmlParser\Exceptions\CircularException
+     * @throws \PHPHtmlParser\Exceptions\NotLoadedException
+     * @throws \PHPHtmlParser\Exceptions\StrictException
+     */
     private function getTokenFromResponse(string $response): string
     {
         $parser = new ChallengePageParser($response, $this->dom);
