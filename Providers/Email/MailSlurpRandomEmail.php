@@ -17,7 +17,7 @@ class MailSlurpRandomEmail implements RandomEmailInterface
 
     private $email;
 
-    private InboxDto $inbox;
+    private ?InboxDto $inbox;
     public function __construct()
     {
         $this->config = Configuration::getDefaultConfiguration()
@@ -33,23 +33,24 @@ class MailSlurpRandomEmail implements RandomEmailInterface
      */
     public function getEmail(): string
     {
-        return $this->inbox ? $this->inbox->getEmailAddress(): $this->createEmailInternally();
+        if (null === $this->inbox) {
+            $this->createEmailInternally();
+        }
+
+        return $this->inbox->getEmailAddress();
     }
 
 
     /**
      * Create a new email address and return it
-     * @return string
      * @throws ApiException
      */
-    private function createEmailInternally(): string
+    private function createEmailInternally(): void
     {
         $options = new \MailSlurp\Models\CreateInboxDto();
         $options->setName("Test inbox");
         $options->setPrefix("test");
         $this->inbox = $this->controller->createInboxWithOptions($options);
-
-        return $this->inbox->getEmailAddress();
     }
     public function findCode(): string
     {

@@ -45,7 +45,7 @@ class RegisterEmail extends Command
      *
      * @var string
      */
-    protected $signature = 'register-email';
+    protected $signature = 'app:register-email';
 
 
     /**
@@ -67,7 +67,7 @@ class RegisterEmail extends Command
 
     public function getName(): string
     {
-        return "blackscale_nedia_challenge";
+        return $this->signature;
     }
 
     /**
@@ -76,6 +76,8 @@ class RegisterEmail extends Command
     public function handle(): int
     {
         try {
+            $this->info("Starting", 2);
+
             $captchaResponse = $this->submitRegistrationGetCaptchaChallenge($this->botName, $this->getEmail());
 
             $verifyResponse = $this->substituteCaptcha($captchaResponse);
