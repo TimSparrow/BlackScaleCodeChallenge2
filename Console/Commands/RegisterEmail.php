@@ -45,7 +45,7 @@ class RegisterEmail extends Command
      *
      * @var string
      */
-    protected $signature = 'app:register-email';
+    protected $signature = 'register-email';
 
 
     /**
@@ -87,12 +87,13 @@ class RegisterEmail extends Command
             // return email and token
             $token = $this->getTokenFromResponse($mathChallengeResult);
 
-            echo $token;
+            $this->info("Successfully completed");
+            $this->newLine();
+            $this->line($token);
 
             return self::SUCCESS;
         } catch (\Throwable $exception) {
-            $this->error($exception->getMessage());
-            return self::FAILURE;
+            $this->fail($exception);
         }
     }
 
