@@ -113,6 +113,7 @@ class RegisterEmail extends Command
     {
         // fetch session id, etc
         $this->sToken = $this->getSessionToken($this->getServiceUri(self::FIRST_PAGE));
+        $this->logger->debug("stoken=" . $this->sToken);
         $request = ['form_params' =>
             [
                 'stoken' => $this->sToken,
@@ -160,7 +161,7 @@ class RegisterEmail extends Command
     private function substituteCaptcha($response): string
     {
         // use DOM top locate the challenge
-        $parser = new ChallengePageParser($response, $this->dom);
+        $parser = new ChallengePageParser($response, $this->dom, $this->logger);
         $sitekey = $parser->findCaptchaChallenge();
         // use CaptchaSolverInterface to obtain code
 
@@ -206,7 +207,7 @@ class RegisterEmail extends Command
      */
     private function solveMathChallenge(string $mathChallenge): string
     {
-        $parser = new ChallengePageParser($mathChallenge, $this->dom);
+        $parser = new ChallengePageParser($mathChallenge, $this->dom, $this->logger);
         $answer = $parser->solveMathChallenge();
         $ts = $parser->getMathChallengeTs();
 
@@ -232,7 +233,7 @@ class RegisterEmail extends Command
      */
     private function getTokenFromResponse(string $response): string
     {
-        $parser = new ChallengePageParser($response, $this->dom);
+        $parser = new ChallengePageParser($response, $this->dom, $this->logger);
         return $parser->getToken();
     }
 
@@ -244,8 +245,11 @@ class RegisterEmail extends Command
      */
     private function getSessionToken(string $uri): string
     {
-        $html = $this->client->get($uri);
-        $parser = new ChallengePageParser($html, $this->dom);
-        return $parser->getSessionToken($this->getEmail());
+        $response = $this->client->get($uri);
+        $html = $response->getBody()->getContents();
+        $parser = new ChallengePageParser($html, $this->dom, $this->logger);
+
+        return $parser->getSessionToken();
+
     }
 }

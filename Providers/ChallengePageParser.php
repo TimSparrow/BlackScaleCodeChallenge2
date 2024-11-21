@@ -4,6 +4,10 @@ namespace App\Providers;
 
 use App\Providers\Captcha\Exceptions\ParserException;
 use PHPHtmlParser\Dom;
+use PHPHtmlParser\Exceptions\ChildNotFoundException;
+use PHPHtmlParser\Exceptions\NotLoadedException;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DomCrawler\Form;
 
 /**
  * A DOM parser adapter for specific tasks
@@ -23,10 +27,13 @@ class ChallengePageParser
     public function __construct(
         string $document,
         private readonly Dom $dom,
+        private readonly LoggerInterface $logger,
     )
     {
         // load and parse the document
         $this->dom->loadStr($document);
+
+        $this->logger->debug("Parsing html", ['html' => $document]);
     }
 
 
@@ -90,8 +97,26 @@ class ChallengePageParser
     }
 
 
-    public function getSessionToken(string $email): string
+    /**
+     * @throws ParserException
+     * @throws ChildNotFoundException
+     * @throws NotLoadedException
+     */
+    public function getSessionToken(): string
     {
-        return $this->dom->find('form[name=stoken]')->text();
+        $formInputs = $this->dom->find('form input');
+        if (!$formInputs instanceof Dom\Node\Collection ) {
+            throw new ParserException("Not found any form inputs in html");
+        }
+        $this->logger->debug("Parsing session token", ['input' => $formInputs, 'count' => $formInputs->count()]);
+        foreach($formInputs as $input) {
+            $this->logger->debug("Input: ", ['input' => $input]);
+            if(($input->getAttribute('type') === 'hidden') && ($input->getAttribute('name') === 'stoken')) {
+                return $input->getAttribute('value');
+            }
+        }
+
+        // not found in form inputs
+        throw new ParserException("Cannot find stoken input element");
     }
 }
