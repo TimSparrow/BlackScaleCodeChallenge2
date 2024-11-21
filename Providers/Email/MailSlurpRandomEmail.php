@@ -24,6 +24,8 @@ class MailSlurpRandomEmail implements RandomEmailInterface
         ->setApiKey('x-api-key', getenv("MAILSLURP_API_KEY"));
 
         $this->controller = new InboxControllerApi(null, $this->config);
+
+        $this->createEmailInternally();
     }
 
     /**
@@ -33,9 +35,6 @@ class MailSlurpRandomEmail implements RandomEmailInterface
      */
     public function getEmail(): string
     {
-        if (null === $this->inbox) {
-            $this->createEmailInternally();
-        }
 
         return $this->inbox->getEmailAddress();
     }

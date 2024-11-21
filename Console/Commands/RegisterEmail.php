@@ -9,11 +9,14 @@ use App\Providers\Email\RandomEmailInterface;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use PHPHtmlParser\Dom;
+use Psr\Log\LoggerInterface;
 
 
 class RegisterEmail extends Command
 {
     private const DOMAIN = 'https://challenge.blackscale.media/';
+
+    private const FIRST_PAGE = 'register.php';
 
     private const CAPTCHA_BOT = 'captcha_bot.php';
 
@@ -23,21 +26,19 @@ class RegisterEmail extends Command
 
     private const FINAL_CHALLENGE_PAGE = 'complete.php';
 
+
     public function __construct(
         private readonly RandomEmailInterface $emailService,
         private readonly Client $client,
         private readonly CaptchaSolverInterface $captchaSolver,
         private readonly Dom $dom,
+        private readonly LoggerInterface $logger
     )
     {
         parent::__construct();
 
         // the following parameters should be added through CLI options, init here to save time
         $this->botName  = str()->random($this->nameLength);
-        $this->challengeBotUri = self::DOMAIN . self::CAPTCHA_BOT;
-        $this->verifyPageUri = self::DOMAIN . self::VERIFY_PAGE;
-        $this->emailVerifyPageUri = self::DOMAIN . self::EMAIL_VERIFY_PAGE;
-        $this->finalChallengePageUri = self::DOMAIN . self::FINAL_CHALLENGE_PAGE;
     }
 
     /**
@@ -58,12 +59,6 @@ class RegisterEmail extends Command
     // properties - can be made command line options
     private int $nameLength = 8;
     private string $botName;
-
-    private string $challengeBotUri;
-    private string $verifyPageUri;
-
-    private string $emailVerifyPageUri;
-    private string $finalChallengePageUri;
 
     public function getName(): string
     {
@@ -100,6 +95,11 @@ class RegisterEmail extends Command
     }
 
 
+    private function getServiceUri($page): string
+    {
+        return self::DOMAIN . $page;
+    }
+
     /**
      * Fills out the step 1 registration form, returning the page with CAPTCHA challenge
      * @param string $botName - user name [fullname]
@@ -109,13 +109,20 @@ class RegisterEmail extends Command
      */
     private function submitRegistrationGetCaptchaChallenge(string $botName, string $email): string
     {
-       $response = $this->client->post($this->challengeBotUri, [
-           'form_params' => [
-               'fullname' => $botName,
-               'email'    => $email,
-           ]
-       ]);
-       return $response->getBody()->getContents();
+        // imitate a visit to the page
+        $rsp1 = $this->client->get( $this->getServiceUri(self::FIRST_PAGE));
+
+        $request = ['form_params' => [
+            'fullname' => $botName,
+            'email'    => $email,
+        ]];
+        $response = $this->client->post($this->getServiceUri(self::CAPTCHA_BOT), $request);
+
+        $this->logger->info("Submitted initial request", $request);
+        $html = $response->getBody()->getContents();
+        $this->logger->debug("Got raw response: $html");
+
+        return $html;
     }
 
     /**
@@ -124,7 +131,10 @@ class RegisterEmail extends Command
      */
     private function getEmail():string
     {
-        return $this->emailService->getEmail();
+        $email =  $this->emailService->getEmail();
+        $this->logger->info("Created email: " . $email);
+
+        return $email;
     }
 
     /**
@@ -145,9 +155,9 @@ class RegisterEmail extends Command
         $sitekey = $parser->findCaptchaChallenge();
         // use CaptchaSolverInterface to obtain code
 
-        $code = $this->captchaSolver->solve($sitekey, $this->challengeBotUri);
+        $code = $this->captchaSolver->solve($sitekey, $this->getServiceUri(self::CAPTCHA_BOT));
         // submit the received CAPTCHA response to the challenge page
-        $response = $this->client->post($this->verifyPageUri, [
+        $response = $this->client->post($this->getServiceUri(self::VERIFY_PAGE), [
             'form_params' => [
                 'g-captcha-response' => $code,
                 'sitekey' => $sitekey,
@@ -164,7 +174,7 @@ class RegisterEmail extends Command
      */
     private function sendEmailCode(string $code): string
     {
-        $response = $this->client->post($this->emailVerifyPageUri, [
+        $response = $this->client->post($this->getServiceUri(self::EMAIL_VERIFY_PAGE), [
             'form_params' => [
                 'code' => $code,
             ]
@@ -191,7 +201,7 @@ class RegisterEmail extends Command
         $answer = $parser->solveMathChallenge();
         $ts = $parser->getMathChallengeTs();
 
-        $response = $this->client->post($this->finalChallengePageUri, [
+        $response = $this->client->post($this->getServiceUri(self::FINAL_CHALLENGE_PAGE), [
             'form_params' => [
                 'ts' => $ts,
                 'solution' => $answer,
