@@ -121,6 +121,9 @@ class RegisterEmail extends Command
         $this->logger->info("Submitted initial request", $request);
         $html = $response->getBody()->getContents();
         $this->logger->debug("Got raw response: $html");
+        if (preg_match("/Error\:/", $html)) {
+            throw new ParserException("Invalid request at stage 1: $html");
+        }
 
         return $html;
     }
