@@ -88,4 +88,10 @@ class ChallengePageParser
     {
         return $this->dom->find('textarea#solution')->text();
     }
+
+
+    public function getSessionToken(string $email): string
+    {
+        return $this->dom->find('form[name=stoken]')->text();
+    }
 }

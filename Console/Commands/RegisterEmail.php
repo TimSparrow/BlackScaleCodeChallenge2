@@ -37,8 +37,8 @@ class RegisterEmail extends Command
     {
         parent::__construct();
 
-        // the following parameters should be added through CLI options, init here to save time
-        $this->botName  = str()->random($this->nameLength);
+        // try a generated name and last  name
+        $this->botName  = str()->random($this->nameLength) . ' ' . str()->random($this->nameLength);
     }
 
     /**
@@ -59,6 +59,8 @@ class RegisterEmail extends Command
     // properties - can be made command line options
     private int $nameLength = 8;
     private string $botName;
+
+    private string $sToken;
 
     public function getName(): string
     {
@@ -109,19 +111,23 @@ class RegisterEmail extends Command
      */
     private function submitRegistrationGetCaptchaChallenge(string $botName, string $email): string
     {
-        // imitate a visit to the page
-        $rsp1 = $this->client->get( $this->getServiceUri(self::FIRST_PAGE));
-
-        $request = ['form_params' => [
-            'fullname' => $botName,
-            'email'    => $email,
-        ]];
+        // fetch session id, etc
+        $this->sToken = $this->getSessionToken($this->getServiceUri(self::FIRST_PAGE));
+        $request = ['form_params' =>
+            [
+                'stoken' => $this->sToken,
+                'fullname' => $botName,
+                'email'    => $email,
+                'request_signature' => base64_encode($email)
+            ]
+        ];
         $response = $this->client->post($this->getServiceUri(self::CAPTCHA_BOT), $request);
 
         $this->logger->info("Submitted initial request", $request);
         $html = $response->getBody()->getContents();
         $this->logger->debug("Got raw response: $html");
-        if (preg_match("/Error\:/", $html)) {
+        // early error catch
+        if (preg_match("/Error\s*:/", $html)) {
             throw new ParserException("Invalid request at stage 1: $html");
         }
 
@@ -228,5 +234,18 @@ class RegisterEmail extends Command
     {
         $parser = new ChallengePageParser($response, $this->dom);
         return $parser->getToken();
+    }
+
+    /**
+     * Fetches the form page and computes its hidden fields
+     *
+     * @param string $html
+     * @return array
+     */
+    private function getSessionToken(string $uri): string
+    {
+        $html = $this->client->get($uri);
+        $parser = new ChallengePageParser($html, $this->dom);
+        return $parser->getSessionToken($this->getEmail());
     }
 }
